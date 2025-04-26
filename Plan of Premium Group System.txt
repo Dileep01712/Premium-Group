@@ -1,0 +1,101 @@
+💡 Complete Premium Group System (Step-by-Step)
+
+Group Structure:
+1. Public Group – Anyone can join. This is where general updates and free content are posted. (Trailer, Teaser, Clip)
+2. Private Group – Only paid (premium) users are added manually by you.
+
+
+Premium Plan Details:
+3. The premium price is ₹10 per month for first 500 members. Later it will be ₹50 per month.
+4. After payment, users must send a screenshot (SS) of the payment to you.
+5. Once you verify the payment, you will manually add them to the private group.
+6. Note: No refunds will be given.
+7. Every premium user must join both public and private groups.
+
+
+Referral System:
+8. If a premium user brings a new premium user, they will get extra 7 days added to their current plan.
+9. The new user must mention the username/First Name of the referrer when sending payment SS.
+10. You will verify this and update the referrer’s expiry date manually in your database (Google Sheet or SQLite).
+
+
+Plan Expiry:
+11. Every premium user will have a start date and expiry date.
+12. Before 7 days of expiry, the bot will send a reminder to renew to every user's personally.
+13. If the user does not renew, the bot will automatically remove them from the private group after the plan ends.
+
+
+Movie/Series Request Process (Private Group Only):
+14. A premium user will send a movie/series name in the private group.
+15. The user had to wait for 30sec before sending new msg. Provided by the telegram.
+16. The bot will then search the database using your Telegram account.
+17. If the file is found, the bot will send the file privately to the user using their user ID.
+18. If the file is not found, the bot will reply in the private group: `"File not found"`.
+
+
+File Sending & Chat Clean-Up:
+19. The bot will use your Telegram account (via Telethon) to search and send files in personal chat.
+20. After sending, the bot will wait 2 for minutes, then delete the chat from your side only.
+21. This keeps your chat list clean, using `DeleteHistoryRequest` with `revoke=False`.
+
+
+Bot Requirements & Tools:
+22. Use Telethon for handling:
+    - Managing user info
+    - Personal messages
+    - Chat deletion
+23. Store premium user details (ID, start/expiry date, referredBy) in a Google Sheet or SQLite DB.
+24. Setup the bot to run and check to remove expired users and send renewal reminders.
+
+
+✅ Important Notes:
+- You should keep backups of all user data (User IDs, expiry, referrals).
+
+
+Total 2 bots one will be on running and one will be on backups.
+Database backups in 2nd account.
+Current database will be set as private.
+New database will be created for new files and after processing these files it will be send to old database.
+
+
+
+1. Remove duplicate files
+2. Rename the files
+3. Create Index
+4. Update the bot program
+5. Provid the required things to bot env
+6. Test the functionality of bot
+7. Deploy the bot
+
+
+
+
+
+
+🔥 Premium Adult Content Plan 🔥
+Get access to daily exclusive 18+ content — all in one place!
+
+📦 What’s Included?
+Daily 3-5 HD AI-Generated 18+ Images
+Daily 10 Viral Videos
+✅ Desi | ✅ Foreign | ✅ MMS | ✅ Uncensored | ✅ Child
+
+
+The premium price is ₹10 per month. No refunds.
+Invite a friend & get +3 days FREE on your plan!
+Daily 3 to 5 iamges.
+Daily 10 video's.
+Forwarding On
+
+
+📩 How It Works?
+
+Join the Private Channel
+Send "Hi" in Private Chat
+
+If you've already received today's content → Wait 24 hours
+If not → Bot will send today's files immediately
+
+
+Bot will send the files on personal chat and delete the chat after 2 minutes from bot side.
+Bot will remind you 1 week before your premium expires so you don’t miss out!
