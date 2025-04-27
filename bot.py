@@ -4,18 +4,18 @@ import time
 import logging
 import asyncio
 import threading
-from flask import Flask
 from waitress import serve
 from dotenv import load_dotenv
+from flask import Flask, request
 from collections import defaultdict
 from aiogram.filters import Command
 from typing import DefaultDict, Set
 from search_index import search_files
 from utils import download_youtube_video
 from telethon.sync import TelegramClient
-from aiogram import Bot, Dispatcher, Router, F
 from aiogram.types import Message, FSInputFile
 from datetime import datetime, timedelta, timezone
+from aiogram import Bot, Dispatcher, Router, F, types
 from telethon.errors import RPCError, AuthKeyDuplicatedError
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from firebase import (
@@ -58,6 +58,7 @@ PRIVATE_GROUP_ID = int(get_env("PRIVATE_GROUP_ID"))  # Private Request Group ID
 PRIVATE_GROUP_URL = get_env("PRIVATE_GROUP_URL")  # Private Request Group URL
 DATABASE_ID = int(get_env("DATABASE_ID"))  # Private Database
 SESSION_NAME = "my_session2"
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 
 
 logging.basicConfig(
@@ -714,7 +715,7 @@ async def fetch_and_send_file(
     """
     Fetch and send the files to respective user to their personal chat.
     """
-    logger.info(f"Query found in fetch_and_send_file: {query}")
+    # logger.info(f"Query found in fetch_and_send_file: {query}")
     global search_msg
 
     try:
@@ -967,8 +968,11 @@ async def handle_query(message: Message):
             parse_mode="Markdown",
         )
 
-        asyncio.create_task(delete_message_after_delay(response_msg, delay=3))
-        await asyncio.sleep(3)
+        try:
+            asyncio.create_task(delete_message_after_delay(response_msg, delay=3))
+            await asyncio.sleep(4)
+        except Exception as e:
+            logger.error(f"Error while deleting message: {e}")
 
         await dp.stop_polling()
         await bot.session.close()
@@ -1097,9 +1101,20 @@ def index():
     return "StreamTap bot is running with flask and threading!"
 
 
-# TODO
+@app.route("/webhook", methods=["POST"])
+async def webhook():
+    try:
+        update_data = request.get_json()
+        update = types.Update(**update_data)
+        loop = asyncio.get_event_loop()
+        loop.create_task(dp.feed_update(bot, update))
+    except Exception as e:
+        logger.error(f"Error in processing webhook update: {e}")
+    return "ok"
+
+
 def start_server():
-    # logger.info("Starting Flask...")
+    logger.info("Starting Flask server...")
     serve(app, host="0.0.0.0", port=8000)
 
 
@@ -1107,17 +1122,6 @@ def run_server():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     start_server()
-
-
-async def run_aiogram():
-    logger.info("Starting Aiogram...")
-    try:
-        await dp.start_polling(bot)
-    except asyncio.CancelledError:
-        logger.info("Polling cancelled. Shutting down Aiogram...")
-    finally:
-        await bot.session.close()
-        logger.info("Aiogram bot session closed.")
 
 
 async def main():
@@ -1128,8 +1132,11 @@ async def main():
     client = TelegramClient(SESSION_NAME, TELEGRAM_API_ID, TELEGRAM_API_HASH)
 
     try:
-        logger.info("Starting Telethon user client...")
+        logger.info("Connecting Telethon user client...")
         await client.connect()
+        if not await client.is_user_authorized():
+            logger.error("Telethon client is not authorized!")
+            os._exit(1)
         logger.info("Telethon user client is running!")
 
         # Clean DB group messages before polling
@@ -1138,26 +1145,34 @@ async def main():
         logger.info("Sending bot startup message...")
         await bot_start_message(chat_id=PRIVATE_GROUP_ID)
 
+        # Set Webhook
+        webhook_url = f"https://{RENDER_EXTERNAL_HOSTNAME}/webhook"
+        await bot.set_webhook(webhook_url)
+        logger.info(f"Webhook set to {webhook_url}")
+
         # Run Flask server in a separate thread
         server_thread = threading.Thread(target=run_server)
         server_thread.daemon = True
         server_thread.start()
+        logger.info("Flask server thread started.")
 
+        # Start monitoring expiry thread
         loop = asyncio.get_running_loop()
         monitoring_thread = threading.Thread(
             target=start_expiry_monitoring, args=(loop,)
         )
         monitoring_thread.daemon = True
         monitoring_thread.start()
+        logger.info("Expiry monitoring thread started.")
 
+        # Start removal processing thread
         removal_thread = threading.Thread(target=process_removal_queue)
         removal_thread.daemon = True
         removal_thread.start()
+        logger.info("Removal processing thread started.")
 
-        logger.info("Starting Aiogram polling...")
-        await dp.start_polling(bot)
-
-        # Keep the event loop running
+        # Keep everything running
+        logger.info("All services started successfully. Keeping the main loop alive...")
         await client.run_until_disconnected()  # type: ignore
 
     except AuthKeyDuplicatedError:
@@ -1169,13 +1184,17 @@ async def main():
         os._exit(1)  # Exit the process to suspend the service
 
     finally:
-        client.disconnect()  # Disconnect safely
+        await bot.delete_webhook()
+        await bot.session.close()
+        client.disconnect()
+        logger.info("Bot and Telethon client disconnected cleanly.")
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())  # Run the main function
+        logger.info("Starting application...")
+        asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Graceful shutdown initiated...")
+        logger.info("Graceful shutdown initiated by KeyboardInterrupt...")
     finally:
         logger.info("Existing the application.")

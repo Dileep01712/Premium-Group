@@ -74,6 +74,7 @@ def download_youtube_video(
             "merge_output_format": "mp4",
             "outtmpl": outtmpl,
             "quiet": True,
+            "cookies": "youtube.txt",
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
